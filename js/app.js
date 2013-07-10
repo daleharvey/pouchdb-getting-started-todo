@@ -36,6 +36,8 @@
   }
 
   function checkboxChanged(todo, event) {
+    todo.completed = event.target.checked;
+    db.put(todo);
   }
 
   // User pressed the delete button for a todo, delete it
