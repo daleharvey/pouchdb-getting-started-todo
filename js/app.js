@@ -59,6 +59,9 @@
 
   // Initialise a sync with the remote server
   function sync() {
+    syncDom.setAttribute('data-sync-state', 'syncing');
+    var pushRep = db.replicate.to(remoteCouch, {continuous: true, complete: syncError});
+    var pullRep = db.replicate.from(remoteCouch, {continuous: true, complete: syncError});
   }
 
   // EDITING STARTS HERE (you dont need to edit anything below this line)
