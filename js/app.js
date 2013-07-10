@@ -26,6 +26,9 @@
 
   // Show the current list of todos by reading them from the database
   function showTodos() {
+    db.allDocs({include_docs: true}, function(err, doc) {
+      redrawTodosUI(doc.rows);
+    });
   }
 
   function checkboxChanged(todo, event) {
