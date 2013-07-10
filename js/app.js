@@ -11,6 +11,10 @@
   var db = new Pouch('todos');
   var remoteCouch = false;
 
+  db.info(function(err, info) {
+    db.changes({since: info.update_seq, onChange: showTodos, continuous: true});
+  });
+
   // We have to create a new todo document and enter it in the database
   function addTodo(text) {
     var todo = {
