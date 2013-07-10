@@ -42,6 +42,7 @@
 
   // User pressed the delete button for a todo, delete it
   function deleteButtonPressed(todo) {
+    db.remove(todo);
   }
 
   // The input box when editing a todo has blurred, we should save
