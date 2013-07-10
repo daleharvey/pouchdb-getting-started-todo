@@ -8,7 +8,7 @@
 
   // EDITING STARTS HERE (you dont need to edit anything above this line)
 
-  var db = false;
+  var db = new Pouch('todos');
   var remoteCouch = false;
 
   // We have to create a new todo document and enter it in the database
