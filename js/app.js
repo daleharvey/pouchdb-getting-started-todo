@@ -13,6 +13,15 @@
 
   // We have to create a new todo document and enter it in the database
   function addTodo(text) {
+    var todo = {
+      title: text,
+      completed: false
+    };
+    db.post(todo, function(err, result) {
+      if (!err) {
+        console.log('Successfully posted a todo!');
+      }
+    });
   }
 
   // Show the current list of todos by reading them from the database
