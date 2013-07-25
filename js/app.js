@@ -10,6 +10,7 @@
 
   var db = new Pouch('todos');
   var remoteCouch = false;
+  var cookie;
 
   db.info(function(err, info) {
     db.changes({since: info.update_seq, onChange: showTodos, continuous: true});
@@ -60,8 +61,15 @@
   // Initialise a sync with the remote server
   function sync() {
     syncDom.setAttribute('data-sync-state', 'syncing');
-    var pushRep = db.replicate.to(remoteCouch, {continuous: true, complete: syncError});
-    var pullRep = db.replicate.from(remoteCouch, {continuous: true, complete: syncError});
+    var remote = new PouchDB(remoteCouch, {headers: {'Cookie': cookie}});
+    var pushRep = db.replicate.to(remote, {
+      continuous: true,
+      complete: syncError
+    });
+    var pullRep = db.replicate.from(remote, {
+      continuous: true,
+      complete: syncError
+    });
   }
 
   // EDITING STARTS HERE (you dont need to edit anything below this line)
@@ -155,5 +163,65 @@
   if (remoteCouch) {
     sync();
   }
+
+  // Host that the couch-persona server is running on
+  var authHost = 'http://127.0.0.1:3000';
+
+  var loggedIn = function(result) {
+    console.log('logged in:', result);
+    remoteCouch = result.dbUrl;
+    cookie = result.authToken.replace('HttpOnly', '');
+    sync();
+  };
+
+  var loggedOut = function() {
+    console.log('logged out!');
+  };
+
+  function simpleXhrSentinel(xhr) {
+    return function() {
+      if (xhr.readyState !== 4) {
+        return;
+      }
+      if (xhr.status == 200) {
+        var result = {};
+        try {
+          result = JSON.parse(xhr.responseText);
+        } catch(e) {}
+        loggedIn(result);
+      } else {
+        navigator.id.logout();
+        loggedOut();
+      }
+    };
+  }
+
+  function verifyAssertion(assertion) {
+    var xhr = new XMLHttpRequest();
+    var param = 'assert=' + assertion;
+    xhr.open('POST', authHost + '/persona/sign-in', true);
+    xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+    xhr.setRequestHeader("Content-length", param.length);
+    xhr.setRequestHeader("Connection", "close");
+    xhr.send(param);
+    xhr.onreadystatechange = simpleXhrSentinel(xhr);
+  }
+
+  function signoutUser() {
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", authHost + '/persona/sign-out', true);
+    xhr.send(null);
+    xhr.onreadystatechange = simpleXhrSentinel(xhr);
+  }
+
+  navigator.id.watch({
+    onlogin: verifyAssertion,
+    onlogout: signoutUser
+  });
+
+  var signinLink = document.getElementById('signin');
+  var signoutLink = document.getElementById('signout');
+  signinLink.onclick = function() { navigator.id.request(); };
+  signoutLink.onclick = function() { navigator.id.logout(); };
 
 })();

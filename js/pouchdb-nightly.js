@@ -1,4 +1,4 @@
-// PouchDB.nightly - 2013-06-23T11:27:20
+// pouchdb.nightly - 2013-07-25T04:43:02
 
 (function() {
  // BEGIN Math.uuid.js
@@ -506,16 +506,19 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 
 var ajax = function ajax(options, callback) {
+
   if (typeof options === "function") {
     callback = options;
     options = {};
   }
+
   var call = function(fun) {
     var args = Array.prototype.slice.call(arguments, 1);
     if (typeof fun === typeof Function) {
       fun.apply(this, args);
     }
-  }; 
+  };
+
   var defaultOptions = {
     method : "GET",
     headers: {},
@@ -523,13 +526,12 @@ var ajax = function ajax(options, callback) {
     processData: true,
     timeout: 10000
   };
+
   options = extend(true, defaultOptions, options);
-  if (options.auth) {
-      var token = btoa(options.auth.username + ':' + options.auth.password);
-      options.headers.Authorization = 'Basic ' + token;
-  }
+
   var onSuccess = function(obj, resp, cb){
-    if (!options.binary && !options.json && options.processData && typeof obj !== 'string') {
+    if (!options.binary && !options.json && options.processData &&
+        typeof obj !== 'string') {
       obj = JSON.stringify(obj);
     } else if (!options.binary && options.json && typeof obj === 'string') {
       try {
@@ -542,41 +544,52 @@ var ajax = function ajax(options, callback) {
     }
     call(cb, null, obj, resp);
   };
+
   var onError = function(err, cb){
     var errParsed;
     var errObj = {status: err.status};
-    try{
-      errParsed = JSON.parse(err.responseText); //would prefer not to have a try/catch clause
+    try {
+      errParsed = JSON.parse(err.responseText);
+      //would prefer not to have a try/catch clause
       errObj = extend(true, {}, errObj, errParsed);
-    } catch(e){}
+    } catch(e) {}
     call(cb, errObj);
   };
+
   if (typeof window !== 'undefined' && window.XMLHttpRequest) {
-    var timer,timedout  = false;
+    var timer, timedout = false;
     var xhr = new XMLHttpRequest();
+
     xhr.open(options.method, options.url);
+    xhr.withCredentials = true;
+
     if (options.json) {
       options.headers.Accept = 'application/json';
-      options.headers['Content-Type'] = options.headers['Content-Type'] || 'application/json';
+      options.headers['Content-Type'] = options.headers['Content-Type'] ||
+        'application/json';
       if (options.body && options.processData && typeof options.body !== "string") {
         options.body = JSON.stringify(options.body);
       }
     }
+
     if (options.binary) {
       xhr.responseType = 'arraybuffer';
     }
-    for (var key in options.headers){
+
+    for (var key in options.headers) {
       xhr.setRequestHeader(key, options.headers[key]);
     }
+
     if (!("body" in options)) {
       options.body = null;
     }
 
     var abortReq = function() {
-        timedout=true;
-        xhr.abort();
-        call(onError, xhr, callback);
+      timedout=true;
+      xhr.abort();
+      call(onError, xhr, callback);
     };
+
     xhr.onreadystatechange = function() {
       if (xhr.readyState !== 4 || timedout) {
         return;
@@ -585,7 +598,9 @@ var ajax = function ajax(options, callback) {
       if (xhr.status >= 200 && xhr.status < 300) {
         var data;
         if (options.binary) {
-          data = new Blob([xhr.response || ''], {type: xhr.getResponseHeader('Content-Type')});
+          data = new Blob([xhr.response || ''], {
+            type: xhr.getResponseHeader('Content-Type')
+          });
         } else {
           data = xhr.responseText;
         }
@@ -594,25 +609,32 @@ var ajax = function ajax(options, callback) {
          call(onError, xhr, callback);
       }
     };
+
     if (options.timeout > 0) {
       timer = setTimeout(abortReq, options.timeout);
     }
     xhr.send(options.body);
     return {abort:abortReq};
+
   } else {
+
     if (options.json) {
       if (!options.binary) {
         options.headers.Accept = 'application/json';
       }
-      options.headers['Content-Type'] = options.headers['Content-Type'] || 'application/json';
+      options.headers['Content-Type'] = options.headers['Content-Type'] ||
+        'application/json';
     }
+
     if (options.binary) {
       options.encoding = null;
       options.json = false;
     }
+
     if (!options.processData) {
       options.json = false;
     }
+
     return request(options, function(err, response, body) {
       if (err) {
         err.status = response ? response.statusCode : 400;
@@ -624,7 +646,8 @@ var ajax = function ajax(options, callback) {
 
       // CouchDB doesn't always return the right content-type for JSON data, so
       // we check for ^{ and }$ (ignoring leading/trailing whitespace)
-      if (!options.binary && (options.json || !options.processData) && typeof data !== 'object' &&
+      if (!options.binary && (options.json || !options.processData) &&
+          typeof data !== 'object' &&
           (/json/.test(content_type) ||
            (/^[\s]*\{/.test(data) && /\}[\s]*$/.test(data)))) {
         data = JSON.parse(data);
@@ -1059,6 +1082,11 @@ Pouch.Errors = {
     status: 400,
     error: 'bad_request',
     reason: 'Something wrong with the request'
+  },
+  NOT_AN_OBJECT: {
+    status: 400,
+    error: 'bad_request',
+    reason: 'Document must be a JSON object'
   }
 };
 Pouch.error = function(error, reason){
@@ -1066,6 +1094,7 @@ Pouch.error = function(error, reason){
 };
 if (typeof module !== 'undefined' && module.exports) {
   global.Pouch = Pouch;
+  global.PouchDB = Pouch;
   Pouch.merge = require('./pouch.merge.js').merge;
   Pouch.collate = require('./pouch.collate.js').collate;
   Pouch.replicate = require('./pouch.replicate.js').replicate;
@@ -1083,6 +1112,7 @@ if (typeof module !== 'undefined' && module.exports) {
   require('./deps/uuid.js');
 } else {
   window.Pouch = Pouch;
+  window.PouchDB = Pouch;
 }
 
 'use strict';
@@ -1422,7 +1452,7 @@ Pouch.merge.collectLeaves = function(revs) {
   return leaves;
 };
 
-// returns all conflicts that is leaves such that
+// returns revs of all conflicts that is leaves such that
 // 1. are not deleted and
 // 2. are different than winning revision
 Pouch.merge.collectConflicts = function(metadata) {
@@ -1623,7 +1653,7 @@ function replicate(src, target, opts, promise) {
 
   function isCompleted() {
     if (completed && pending === 0) {
-      result.end_time = Date.now();
+      result.end_time = new Date();
       writeCheckpoint(target, repId, last_seq, function(err, res) {
         call(opts.complete, err, result);
       });
@@ -1685,7 +1715,9 @@ Pouch.replicate = function(src, target, opts, callback) {
   if (opts === undefined) {
     opts = {};
   }
-  opts.complete = callback;
+  if (!opts.complete) {
+    opts.complete = callback;
+  }
   var replicateRet = new Promise();
   toPouch(src, function(err, src) {
     if (err) {
@@ -1709,8 +1741,8 @@ Pouch.replicate = function(src, target, opts, callback) {
 // Pretty dumb name for a function, just wraps callback calls so we dont
 // to if (callback) callback() everywhere
 var call = function(fun) {
-  var args = Array.prototype.slice.call(arguments, 1);
   if (typeof fun === typeof Function) {
+    var args = Array.prototype.slice.call(arguments, 1);
     fun.apply(this, args);
   }
 };
@@ -1733,19 +1765,6 @@ var isLocalId = function(id) {
 
 var isAttachmentId = function(id) {
   return (/\//.test(id) && !isLocalId(id) && !/^_design/.test(id));
-};
-
-// Parse document ids: docid[/attachid]
-//   - /attachid is optional, and can have slashes in it too
-//   - int ids and strings beginning with _design or _local are not split
-// returns an object: { docId: docid, attachmentId: attachid }
-var parseDocId = function(id) {
-  var ids = (typeof id === 'string') && !(/^_(design|local)\//.test(id)) ?
-    id.split('/') : [id];
-  return {
-    docId: ids[0],
-    attachmentId: ids.splice(1).join('/').replace(/^\/+/, '')
-  };
 };
 
 // Determine id an ID is valid
@@ -1776,23 +1795,6 @@ var reservedWords = [
 // revision for new writes that are missing them, etc
 var parseDoc = function(doc, newEdits) {
   var error = null;
-
-  // check for an attachment id and add attachments as needed
-  if (doc._id) {
-    var id = parseDocId(doc._id);
-    if (id.attachmentId !== '') {
-      var attachment = btoa(JSON.stringify(doc));
-      doc = {_id: id.docId};
-      if (!doc._attachments) {
-        doc._attachments = {};
-      }
-      doc._attachments[id.attachmentId] = {
-        content_type: 'application/json',
-        data: attachment
-      };
-    }
-  }
-
   var nRevNum;
   var newRevId;
   var revInfo;
@@ -1950,6 +1952,10 @@ var filterChange = function(opts) {
     }
     if (!opts.include_docs) {
       delete change.doc;
+    } else {
+      for (var att in change.doc._attachments) {
+        change.doc._attachments[att].stub = true;
+      }
     }
     return true;
   };
@@ -2032,7 +2038,6 @@ if (typeof module !== 'undefined' && module.exports) {
     yankError: yankError,
     isLocalId: isLocalId,
     isAttachmentId: isAttachmentId,
-    parseDocId: parseDocId,
     parseDoc: parseDoc,
     isDeleted: isDeleted,
     compareRevs: compareRevs,
@@ -2203,6 +2208,9 @@ var PouchAdapter = function(opts, callback) {
       callback = opts;
       opts = {};
     }
+    if (typeof doc !== 'object' || Array.isArray(doc)) {
+      return call(callback, Pouch.Errors.NOT_AN_OBJECT);
+    }
     return customApi.bulkDocs({docs: [doc]}, opts,
         autoCompact(yankError(callback)));
   };
@@ -2212,15 +2220,17 @@ var PouchAdapter = function(opts, callback) {
       callback = opts;
       opts = {};
     }
-
-    if (!doc || !('_id' in doc)) {
+    if (typeof doc !== 'object') {
+      return call(callback, Pouch.Errors.NOT_AN_OBJECT);
+    }
+    if (!('_id' in doc)) {
       return call(callback, Pouch.Errors.MISSING_ID);
     }
     return customApi.bulkDocs({docs: [doc]}, opts,
         autoCompact(yankError(callback)));
   };
 
-  api.putAttachment = function (id, rev, blob, type, callback) {
+  api.putAttachment = function (docId, attachmentId, rev, blob, type, callback) {
     if (typeof type === 'function') {
       callback = type;
       type = blob;
@@ -2232,21 +2242,20 @@ var PouchAdapter = function(opts, callback) {
       blob = rev;
       rev = null;
     }
-    id = parseDocId(id);
 
     function createAttachment(doc) {
       doc._attachments = doc._attachments || {};
-      doc._attachments[id.attachmentId] = {
+      doc._attachments[attachmentId] = {
         content_type: type,
         data: blob
       };
       api.put(doc, callback);
     }
 
-    api.get(id.docId, function(err, doc) {
+    api.get(docId, function(err, doc) {
       // create new doc
       if (err && err.error === Pouch.Errors.MISSING_DOC.error) {
-        createAttachment({_id: id.docId});
+        createAttachment({_id: docId});
         return;
       }
       if (err) {
@@ -2263,21 +2272,23 @@ var PouchAdapter = function(opts, callback) {
     });
   };
 
-  api.removeAttachment = function (id, rev, callback) {
-    id = parseDocId(id);
-    api.get(id.docId, function(err, obj) {
+  api.removeAttachment = function (docId, attachmentId, rev, callback) {
+    api.get(docId, function(err, obj) {
       if (err) {
         call(callback, err);
         return;
       }
-
       if (obj._rev !== rev) {
         call(callback, Pouch.Errors.REV_CONFLICT);
         return;
       }
-
-      obj._attachments = obj._attachments || {};
-      delete obj._attachments[id.attachmentId];
+      if (!obj._attachments) {
+        return call(callback, null);
+      }
+      delete obj._attachments[attachmentId];
+      if (Object.keys(obj._attachments).length === 0){
+        delete obj._attachments;
+      }
       api.put(obj, callback);
     });
   };
@@ -2447,23 +2458,6 @@ var PouchAdapter = function(opts, callback) {
       return; // open_revs does not like other options
     }
 
-    id = parseDocId(id);
-    if (id.attachmentId !== '') {
-      return customApi._get(id, opts, function(err, result){
-        if (err) {
-          return call(callback, err);
-        }
-        if (result.doc._attachments && result.doc._attachments[id.attachmentId]) {
-          customApi._getAttachment(result.doc._attachments[id.attachmentId],
-                                   {encode: false, ctx: result.ctx}, function(err, data) {
-            return call(callback, null, data);
-          });
-        } else {
-          return call(callback, Pouch.Errors.MISSING_DOC);
-        }
-      });
-    }
-
     return customApi._get(id, opts, function(err, result) {
       if (err) {
         return call(callback, err);
@@ -2518,6 +2512,9 @@ var PouchAdapter = function(opts, callback) {
       if (opts.attachments && doc._attachments) {
         var attachments = doc._attachments;
         var count = Object.keys(attachments).length;
+        if (count === 0) {
+          return call(callback, null, doc);
+        }
         Object.keys(attachments).forEach(function(key) {
           customApi._getAttachment(attachments[key], {encode: true, ctx: ctx}, function(err, data) {
             doc._attachments[key].data = data;
@@ -2537,13 +2534,21 @@ var PouchAdapter = function(opts, callback) {
     });
   };
 
-  api.getAttachment = function(id, opts, callback) {
+  api.getAttachment = function(docId, attachmentId, opts, callback) {
     if (opts instanceof Function) {
       callback = opts;
       opts = {};
     }
-    customApi.get(id, function(err, res) {
-      callback(err, res);
+    customApi._get(docId, opts, function(err, res) {
+      if (err) {
+        return call(callback, err);
+      }
+      if (res.doc._attachments && res.doc._attachments[attachmentId]) {
+        opts.ctx = res.ctx;
+        customApi._getAttachment(res.doc._attachments[attachmentId], opts, callback);
+      } else {
+        return call(callback, Pouch.Errors.MISSING_DOC);
+      }
     });
   };
 
@@ -2639,6 +2644,12 @@ var PouchAdapter = function(opts, callback) {
 
     if (!Array.isArray(req.docs)) {
       return call(callback, Pouch.Errors.QUERY_PARSE_ERROR);
+    }
+
+    for (var i = 0; i < req.docs.length; ++i) {
+      if (typeof req.docs[i] !== 'object' || Array.isArray(req.docs[i])) {
+        return call(callback, Pouch.Errors.NOT_AN_OBJECT);
+      }
     }
 
     req = extend(true, {}, req);
@@ -2747,6 +2758,13 @@ function parseUri (str) {
   return uri;
 }
 
+function encodeDocId(id) {
+  if (/^_design/.test(id)) {
+    return id;
+  }
+  return encodeURIComponent(id);
+}
+
 parseUri.options = {
   strictMode: false,
   key: ["source","protocol","authority","userInfo","user","password","host",
@@ -2836,8 +2854,15 @@ var HttpPouch = function(opts, callback) {
 
   // Parse the URI given by opts.name into an easy-to-use object
   var host = getHost(opts.name);
+
+  host.headers = opts.headers || {};
   if (opts.auth) {
-    host.auth = opts.auth;
+    var token = btoa(opts.auth.username + ':' + opts.auth.password);
+    host.headers.Authorization = 'Basic ' + token;
+  }
+
+  if (opts.headers) {
+    host.headers = opts.headers;
   }
 
   // Generate the database URL based on the host
@@ -2863,7 +2888,7 @@ var HttpPouch = function(opts, callback) {
       };
       var params = '?count=' + opts.count;
       ajax({
-        auth: host.auth,
+        headers: host.headers,
         method: 'GET',
         url: genUrl(host, '_uuids') + params
       }, cb);
@@ -2872,11 +2897,11 @@ var HttpPouch = function(opts, callback) {
 
   // Create a new CouchDB database based on the given opts
   var createDB = function(){
-    ajax({auth: host.auth, method: 'PUT', url: db_url}, function(err, ret) {
+    ajax({headers: host.headers, method: 'PUT', url: db_url}, function(err, ret) {
       // If we get an "Unauthorized" error
       if (err && err.status === 401) {
         // Test if the database already exists
-        ajax({auth: host.auth, method: 'HEAD', url: db_url}, function (err, ret) {
+        ajax({headers: host.headers, method: 'HEAD', url: db_url}, function (err, ret) {
           // If there is still an error
           if (err) {
             // Give the error to the callback to deal with
@@ -2898,7 +2923,7 @@ var HttpPouch = function(opts, callback) {
     });
   };
   if (!opts.skipSetup) {
-    ajax({auth: host.auth, method: 'GET', url: db_url}, function(err, ret) {
+    ajax({headers: host.headers, method: 'GET', url: db_url}, function(err, ret) {
       //check if the db exists
       if (err) {
         if (err.status === 404) {
@@ -2928,7 +2953,7 @@ var HttpPouch = function(opts, callback) {
       api.taskqueue.addTask('request', arguments);
       return;
     }
-    options.auth = host.auth;
+    options.headers = host.headers;
     options.url = genDBUrl(host, options.url);
     ajax(options, callback);
   };
@@ -2945,7 +2970,7 @@ var HttpPouch = function(opts, callback) {
       opts = {};
     }
     ajax({
-      auth: host.auth,
+      headers: host.headers,
       url: genDBUrl(host, '_compact'),
       method: 'POST'
     }, function() {
@@ -2974,7 +2999,7 @@ var HttpPouch = function(opts, callback) {
       return;
     }
     ajax({
-      auth: host.auth,
+      headers: host.headers,
       method:'GET',
       url: genDBUrl(host, '')
     }, callback);
@@ -2992,6 +3017,10 @@ var HttpPouch = function(opts, callback) {
     if (typeof opts === 'function') {
       callback = opts;
       opts = {};
+    }
+
+    if (opts.auto_encode === undefined) {
+      opts.auto_encode = true;
     }
 
     // List of parameters to add to the GET request
@@ -3050,9 +3079,13 @@ var HttpPouch = function(opts, callback) {
     params = params.join('&');
     params = params === '' ? '' : '?' + params;
 
+    if (opts.auto_encode) {
+      id = encodeDocId(id);
+    }
+
     // Set the options for the ajax call
     var options = {
-      auth: host.auth,
+      headers: host.headers,
       method: 'GET',
       url: genDBUrl(host, id + params)
     };
@@ -3097,29 +3130,45 @@ var HttpPouch = function(opts, callback) {
 
     // Delete the document
     ajax({
-      auth: host.auth,
+      headers: host.headers,
       method:'DELETE',
-      url: genDBUrl(host, doc._id) + '?rev=' + doc._rev
+      url: genDBUrl(host, encodeDocId(doc._id)) + '?rev=' + doc._rev
     }, callback);
   };
 
+  // Get the attachment
+  api.getAttachment = function(docId, attachmentId, opts, callback) {
+    if (typeof opts === 'function') {
+      callback = opts;
+      opts = {};
+    }
+    if (opts.auto_encode === undefined) {
+      opts.auto_encode = true;
+    }
+    if (opts.auto_encode) {
+      docId = encodeDocId(docId);
+    }
+    opts.auto_encode = false;
+    api.get(docId + '/' + attachmentId, opts, callback);
+  };
+
   // Remove the attachment given by the id and rev
-  api.removeAttachment = function idb_removeAttachment(id, rev, callback) {
+  api.removeAttachment = function(docId, attachmentId, rev, callback) {
     if (!api.taskqueue.ready()) {
       api.taskqueue.addTask('removeAttachment', arguments);
       return;
     }
     ajax({
-      auth: host.auth,
+      headers: host.headers,
       method: 'DELETE',
-      url: genDBUrl(host, id) + '?rev=' + rev
+      url: genDBUrl(host, encodeDocId(docId) + '/' + attachmentId) + '?rev=' + rev
     }, callback);
   };
 
   // Add the attachment given by blob and its contentType property
   // to the document with the given id, the revision given by rev, and
   // add it to the database given by host.
-  api.putAttachment = function(id, rev, blob, type, callback) {
+  api.putAttachment = function(docId, attachmentId, rev, blob, type, callback) {
     if (!api.taskqueue.ready()) {
       api.taskqueue.addTask('putAttachment', arguments);
       return;
@@ -3135,14 +3184,14 @@ var HttpPouch = function(opts, callback) {
       blob = rev;
       rev = null;
     }
+    var id = encodeDocId(docId) + '/' + attachmentId;
     var url = genDBUrl(host, id);
     if (rev) {
       url += '?rev=' + rev;
     }
-
     // Add the attachment
     ajax({
-      auth: host.auth,
+      headers: host.headers,
       method:'PUT',
       url: url,
       headers: {'Content-Type': type},
@@ -3163,8 +3212,10 @@ var HttpPouch = function(opts, callback) {
       callback = opts;
       opts = {};
     }
-
-    if (!doc || !('_id' in doc)) {
+    if (typeof doc !== 'object') {
+      return call(callback, Pouch.Errors.NOT_AN_OBJECT);
+    }
+    if (!('_id' in doc)) {
       return call(callback, Pouch.Errors.MISSING_ID);
     }
 
@@ -3186,9 +3237,9 @@ var HttpPouch = function(opts, callback) {
 
     // Add the document
     ajax({
-      auth: host.auth,
+      headers: host.headers,
       method: 'PUT',
-      url: genDBUrl(host, doc._id) + params,
+      url: genDBUrl(host, encodeDocId(doc._id)) + params,
       body: doc
     }, callback);
   };
@@ -3205,6 +3256,9 @@ var HttpPouch = function(opts, callback) {
     if (typeof opts === 'function') {
       callback = opts;
       opts = {};
+    }
+    if (typeof doc !== 'object') {
+      return call(callback, Pouch.Errors.NOT_AN_OBJECT);
     }
     if (! ("_id" in doc)) {
       if (uuids.list.length > 0) {
@@ -3251,7 +3305,7 @@ var HttpPouch = function(opts, callback) {
 
     // Update/create the documents
     ajax({
-      auth: host.auth,
+      headers: host.headers,
       method:'POST',
       url: genDBUrl(host, '_bulk_docs'),
       body: req
@@ -3331,7 +3385,7 @@ var HttpPouch = function(opts, callback) {
 
     // Get the document listing
     ajax({
-      auth: host.auth,
+      headers: host.headers,
       method: method,
       url: genDBUrl(host, '_all_docs' + params),
       body: body
@@ -3418,7 +3472,7 @@ var HttpPouch = function(opts, callback) {
 
       // Set the options for the ajax call
       var xhrOpts = {
-        auth: host.auth, method:'GET',
+        headers: host.headers, method:'GET',
         url: genDBUrl(host, '_changes' + paramStr),
         // _changes can take a long time to generate, especially when filtered
         timeout: null
@@ -3532,7 +3586,7 @@ var HttpPouch = function(opts, callback) {
 
     // Get the missing document/revision IDs
     ajax({
-      auth: host.auth,
+      headers: host.headers,
       method:'POST',
       url: genDBUrl(host, '_revs_diff'),
       body: req
@@ -3555,7 +3609,7 @@ var HttpPouch = function(opts, callback) {
 // Delete the HttpPouch specified by the given name.
 HttpPouch.destroy = function(name, callback) {
   var host = getHost(name);
-  ajax({auth: host.auth, method: 'DELETE', url: genDBUrl(host, '')}, callback);
+  ajax({headers: host.headers, method: 'DELETE', url: genDBUrl(host, '')}, callback);
 };
 
 // HttpPouch is a valid adapter.
@@ -3637,11 +3691,6 @@ var IdbPouch = function(opts, callback) {
     Pouch.openReqList[name] = req;
   }
 
-  var meta = {
-    id: 'meta-store',
-    updateSeq: 0
-  };
-
   var blobSupport = null;
 
   var instanceId = null;
@@ -3709,23 +3758,16 @@ var IdbPouch = function(opts, callback) {
       return;
     }
 
-    var req = txn.objectStore(META_STORE).get('meta-store');
+    var req = txn.objectStore(META_STORE).get(META_STORE);
 
     req.onsuccess = function(e) {
-      var reqDBId,
-          result;
-
-      if (e.target.result) {
-        meta = e.target.result;
-      }
-
+      var meta = e.target.result || {id: META_STORE};
       if (name + '_id' in meta) {
         instanceId = meta[name + '_id'];
       } else {
         instanceId = Pouch.uuid();
-
         meta[name + '_id'] = instanceId;
-        reqDBId = txn.objectStore(META_STORE).put(meta);
+        txn.objectStore(META_STORE).put(meta);
       }
 
       // detect blob support
@@ -3755,7 +3797,6 @@ var IdbPouch = function(opts, callback) {
   api._bulkDocs = function idb_bulkDocs(req, opts, callback) {
     var newEdits = opts.new_edits;
     var userDocs = req.docs;
-
     // Parse the docs, give them a sequence number for the result
     var docInfos = userDocs.map(function(doc, i) {
       var newDoc = parseDoc(doc, newEdits);
@@ -3771,9 +3812,17 @@ var IdbPouch = function(opts, callback) {
     }
 
     var results = [];
+    var docsWritten = 0;
+
+    function writeMetaData(e) {
+      var meta = e.target.result;
+      meta.updateSeq = (meta.updateSeq || 0) + docsWritten;
+      txn.objectStore(META_STORE).put(meta);
+    }
 
     function processDocs() {
       if (!docInfos.length) {
+        txn.objectStore(META_STORE).get(META_STORE).onsuccess = writeMetaData;
         return;
       }
       var currentDoc = docInfos.shift();
@@ -3824,8 +3873,10 @@ var IdbPouch = function(opts, callback) {
         var data;
         try {
           data = atob(att.data);
-        } catch(e) {
-          return call(callback, Pouch.error(Pouch.Errors.BAD_ARG, "Attachments need to be base64 encoded"));
+        } catch (e) {
+          var err = Pouch.error(Pouch.Errors.BAD_ARG,
+                                "Attachments need to be base64 encoded");
+          return call(callback, err);
         }
         att.digest = 'md5-' + Crypto.MD5(data);
         if (blobSupport) {
@@ -3884,12 +3935,10 @@ var IdbPouch = function(opts, callback) {
     function writeDoc(docInfo, callback) {
       var err = null;
       var recv = 0;
-
       docInfo.data._id = docInfo.metadata.id;
       docInfo.data._rev = docInfo.metadata.rev;
 
-      meta.updateSeq++;
-      var req = txn.objectStore(META_STORE).put(meta);
+      docsWritten++;
 
       if (isDeleted(docInfo.metadata, docInfo.metadata.rev)) {
         docInfo.data._deleted = true;
@@ -4029,7 +4078,7 @@ var IdbPouch = function(opts, callback) {
       call(callback, err, {doc: doc, metadata: metadata, ctx: txn});
     }
 
-    txn.objectStore(DOC_STORE).get(id.docId).onsuccess = function(e) {
+    txn.objectStore(DOC_STORE).get(id).onsuccess = function(e) {
       metadata = e.target.result;
       // we can determine the result here if:
       // 1. there is no such document
@@ -4065,7 +4114,12 @@ var IdbPouch = function(opts, callback) {
 
   api._getAttachment = function(attachment, opts, callback) {
     var result;
-    var txn = opts.ctx;
+    var txn;
+    if (opts.ctx) {
+      txn = opts.ctx;
+    } else {
+      txn = idb.transaction([DOC_STORE, BY_SEQ_STORE, ATTACH_STORE], 'readonly');
+    }
     var digest = attachment.digest;
     var type = attachment.content_type;
 
@@ -4158,8 +4212,10 @@ var IdbPouch = function(opts, callback) {
               delete(doc.doc._doc_id_rev);
           }
           if (opts.conflicts) {
-            doc.doc._conflicts = Pouch.merge.collectConflicts(metadata)
-              .map(function(x) { return x; });
+            doc.doc._conflicts = Pouch.merge.collectConflicts(metadata);
+          }
+          for (var att in doc.doc._attachments) {
+            doc.doc._attachments[att].stub = true;
           }
         }
         if ('keys' in opts) {
@@ -4191,32 +4247,36 @@ var IdbPouch = function(opts, callback) {
     };
   };
 
-  // Looping through all the documents in the database is a terrible idea
-  // easiest to implement though, should probably keep a counter
   api._info = function idb_info(callback) {
     var count = 0;
-    var result;
-    var txn = idb.transaction([DOC_STORE], 'readonly');
+    var update_seq = 0;
+    var txn = idb.transaction([DOC_STORE, META_STORE], 'readonly');
+
+    function fetchUpdateSeq(e) {
+      update_seq = e.target.result && e.target.result.updateSeq || 0;
+    }
+
+    function countDocs(e) {
+      var cursor = e.target.result;
+      if (!cursor) {
+        txn.objectStore(META_STORE).get(META_STORE).onsuccess = fetchUpdateSeq;
+        return;
+      }
+      if (cursor.value.deleted !== true) {
+        count++;
+      }
+      cursor['continue']();
+    }
 
     txn.oncomplete = function() {
-      callback(null, result);
+      callback(null, {
+        db_name: name,
+        doc_count: count,
+        update_seq: update_seq
+      });
     };
 
-    txn.objectStore(DOC_STORE).openCursor().onsuccess = function(e) {
-        var cursor = e.target.result;
-        if (!cursor) {
-          result = {
-            db_name: name,
-            doc_count: count,
-            update_seq: meta.updateSeq
-          };
-          return;
-        }
-        if (cursor.value.deleted !== true) {
-          count++;
-        }
-        cursor['continue']();
-      };
+    txn.objectStore(DOC_STORE).openCursor().onsuccess = countDocs;
   };
 
   api._changes = function idb_changes(opts) {
@@ -4339,8 +4399,7 @@ var IdbPouch = function(opts, callback) {
             change.deleted = true;
           }
           if (opts.conflicts) {
-            change.doc._conflicts = Pouch.merge.collectConflicts(metadata)
-              .map(function(x) { return x; });
+            change.doc._conflicts = Pouch.merge.collectConflicts(metadata);
           }
 
           // Dedupe the changes feed
@@ -4493,7 +4552,6 @@ var unknownError = function(callback) {
 var webSqlPouch = function(opts, callback) {
 
   var api = {};
-  var update_seq = 0;
   var instanceId = null;
   var name = opts.name;
 
@@ -4526,12 +4584,11 @@ var webSqlPouch = function(opts, callback) {
       tx.executeSql(updateseq, [], function(tx, result) {
         if (!result.rows.length) {
           var initSeq = 'INSERT INTO ' + META_STORE + ' (update_seq) VALUES (?)';
-          var newId = Pouch.uuid();
           tx.executeSql(initSeq, [0]);
           return;
         }
-        update_seq = result.rows.item(0).update_seq;
       });
+
       var dbid = 'SELECT dbid FROM ' + META_STORE + ' WHERE dbid IS NOT NULL';
       tx.executeSql(dbid, [], function(tx, result) {
         if (!result.rows.length) {
@@ -4564,10 +4621,15 @@ var webSqlPouch = function(opts, callback) {
     db.transaction(function(tx) {
       var sql = 'SELECT COUNT(id) AS count FROM ' + DOC_STORE;
       tx.executeSql(sql, [], function(tx, result) {
-        callback(null, {
-          db_name: name,
-          doc_count: result.rows.item(0).count,
-          update_seq: update_seq
+        var doc_count = result.rows.item(0).count;
+        var updateseq = 'SELECT update_seq FROM ' + META_STORE;
+        tx.executeSql(updateseq, [], function(tx, result) {
+          var update_seq = result.rows.item(0).update_seq;
+          callback(null, {
+            db_name: name,
+            doc_count: doc_count,
+            update_seq: update_seq
+          });
         });
       });
     });
@@ -4577,6 +4639,7 @@ var webSqlPouch = function(opts, callback) {
 
     var newEdits = opts.new_edits;
     var userDocs = req.docs;
+    var docsWritten = 0;
 
     // Parse the docs, give them a sequence number for the result
     var docInfos = userDocs.map(function(doc, i) {
@@ -4622,14 +4685,20 @@ var webSqlPouch = function(opts, callback) {
           return;
         }
 
-        update_seq++;
+        docsWritten++;
+
+        webSqlPouch.Changes.notify(name);
+        webSqlPouch.Changes.notifyLocalWindows(name);
+      });
+
+      var updateseq = 'SELECT update_seq FROM ' + META_STORE;
+      tx.executeSql(updateseq, [], function(tx, result) {
+        var update_seq = result.rows.item(0).update_seq + docsWritten;
         var sql = 'UPDATE ' + META_STORE + ' SET update_seq=?';
         tx.executeSql(sql, [update_seq], function() {
-          webSqlPouch.Changes.notify(name);
-          webSqlPouch.Changes.notifyLocalWindows(name);
+          call(callback, null, aresults);
         });
       });
-      call(callback, null, aresults);
     }
 
     function preprocessAttachment(att, finish) {
@@ -4639,8 +4708,10 @@ var webSqlPouch = function(opts, callback) {
       if (typeof att.data === 'string') {
         try {
           att.data = atob(att.data);
-        } catch(e) {
-          return call(callback, Pouch.error(Pouch.Errors.BAD_ARG, "Attachments need to be base64 encoded"));
+        } catch (e) {
+          var err = Pouch.error(Pouch.Errors.BAD_ARG,
+                                "Attachments need to be base64 encoded");
+          return call(callback, err);
         }
         att.digest = 'md5-' + Crypto.MD5(att.data);
         return finish();
@@ -4871,7 +4942,7 @@ var webSqlPouch = function(opts, callback) {
     }
 
     var sql = 'SELECT * FROM ' + DOC_STORE + ' WHERE id=?';
-    tx.executeSql(sql, [id.docId], function(a, results) {
+    tx.executeSql(sql, [id], function(a, results) {
       if (!results.rows.length) {
         err = Pouch.Errors.MISSING_DOC;
         return finish();
@@ -4900,9 +4971,6 @@ var webSqlPouch = function(opts, callback) {
 
   function makeRevs(arr) {
     return arr.map(function(x) { return {rev: x.rev}; });
-  }
-  function makeIds(arr) {
-    return arr.map(function(x) { return x.id; });
   }
 
   api._allDocs = function(opts, callback) {
@@ -4946,7 +5014,10 @@ var webSqlPouch = function(opts, callback) {
               doc.doc = data;
               doc.doc._rev = Pouch.merge.winningRev(metadata);
               if (opts.conflicts) {
-                doc.doc._conflicts = makeIds(Pouch.merge.collectConflicts(metadata));
+                doc.doc._conflicts = Pouch.merge.collectConflicts(metadata);
+              }
+              for (var att in doc.doc._attachments) {
+                doc.doc._attachments[att].stub = true;
               }
             }
             if ('keys' in opts) {
