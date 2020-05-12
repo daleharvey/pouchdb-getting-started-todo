@@ -63,11 +63,11 @@
     syncDom.setAttribute('data-sync-state', 'syncing');
     var remote = new PouchDB(remoteCouch, {headers: {'Cookie': cookie}});
     var pushRep = db.replicate.to(remote, {
-      continuous: true,
+      live: true,
       complete: syncError
     });
     var pullRep = db.replicate.from(remote, {
-      continuous: true,
+      live: true,
       complete: syncError
     });
   }
